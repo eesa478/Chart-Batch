@@ -1,7 +1,7 @@
 # Chart-Batch
 open multiple trading view charts in one click from your chartink screener
 
-<img width="1617" height="881" alt="image" src="https://github.com/user-attachments/assets/09301444-c687-47db-870b-0095499b5ae8" />
+<img width="1417" height="681" alt="image" src="https://github.com/user-attachments/assets/09301444-c687-47db-870b-0095499b5ae8" />
 
 
 Click "copy" in your chartink screener
