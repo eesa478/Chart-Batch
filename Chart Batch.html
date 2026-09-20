@@ -1,0 +1,796 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Chart Batch — TradingView Link Grouper</title>
+<style>
+  :root{
+    --bg: #0b0f0d;
+    --panel: #101713;
+    --panel-line: #1e2b23;
+    --text: #d9e6dd;
+    --muted: #7c9184;
+    --accent: #3ddc84;
+    --accent-dim: #1f6b45;
+    --amber: #e0b64f;
+    --red: #e0704f;
+    --mono: 'IBM Plex Mono', 'SF Mono', Consolas, monospace;
+    --sans: 'Inter', -apple-system, Segoe UI, sans-serif;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:
+      radial-gradient(ellipse at top left, rgba(61,220,132,0.06), transparent 55%),
+      var(--bg);
+    color:var(--text);
+    font-family:var(--sans);
+    min-height:100vh;
+  }
+  .wrap{max-width:920px; margin:0 auto; padding:48px 24px 80px;}
+
+  header{margin-bottom:28px;}
+  .eyebrow{
+    font-family:var(--mono);
+    font-size:12px;
+    letter-spacing:.14em;
+    text-transform:uppercase;
+    color:var(--accent);
+    display:flex; align-items:center; gap:8px;
+    margin-bottom:10px;
+  }
+  .eyebrow::before{content:"●"; font-size:8px; color:var(--accent);}
+  h1{
+    font-family:var(--mono);
+    font-size:clamp(26px,4vw,36px);
+    font-weight:600;
+    margin:0 0 8px;
+    letter-spacing:-0.01em;
+  }
+  p.sub{color:var(--muted); font-size:14.5px; line-height:1.6; margin:0; max-width:560px;}
+
+  /* Tabs */
+  .tabs{
+    display:flex;
+    gap:6px;
+    margin-bottom:24px;
+    border-bottom:1px solid var(--panel-line);
+  }
+  .tab-btn{
+    background:transparent;
+    border:none;
+    border-bottom:2px solid transparent;
+    color:var(--muted);
+    font-family:var(--mono);
+    font-size:13px;
+    padding:10px 4px;
+    margin-right:22px;
+    cursor:pointer;
+    letter-spacing:.03em;
+  }
+  .tab-btn.active{color:var(--accent); border-bottom-color:var(--accent);}
+  .tab-btn .badge{
+    display:inline-block;
+    background:var(--accent-dim);
+    color:#dffbea;
+    font-size:11px;
+    padding:1px 7px;
+    border-radius:20px;
+    margin-left:6px;
+  }
+  .view{display:none;}
+  .view.active{display:block;}
+
+  .panel{
+    background:var(--panel);
+    border:1px solid var(--panel-line);
+    border-radius:10px;
+    padding:22px;
+    margin-bottom:24px;
+  }
+  label{
+    display:block;
+    font-family:var(--mono);
+    font-size:11.5px;
+    letter-spacing:.08em;
+    text-transform:uppercase;
+    color:var(--muted);
+    margin-bottom:10px;
+  }
+  textarea{
+    width:100%;
+    min-height:120px;
+    resize:vertical;
+    background:#070b09;
+    border:1px solid var(--panel-line);
+    border-radius:7px;
+    color:var(--text);
+    font-family:var(--mono);
+    font-size:14px;
+    line-height:1.6;
+    padding:14px;
+    outline:none;
+    transition:border-color .15s;
+  }
+  textarea:focus{border-color:var(--accent-dim);}
+  textarea::placeholder{color:#4a5b50;}
+
+  .controls{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:16px;
+    margin-top:16px;
+    flex-wrap:wrap;
+  }
+  .group-size{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    font-family:var(--mono);
+    font-size:13px;
+    color:var(--muted);
+  }
+  .group-size input{
+    width:56px;
+    background:#070b09;
+    border:1px solid var(--panel-line);
+    border-radius:5px;
+    color:var(--text);
+    font-family:var(--mono);
+    font-size:13px;
+    padding:6px 8px;
+    text-align:center;
+  }
+
+  .chartink-hint{
+    margin-top:12px;
+    font-family:var(--mono);
+    font-size:12px;
+    color:var(--muted);
+    line-height:1.6;
+  }
+  .chartink-hint b{color:var(--accent);}
+
+  button{
+    font-family:var(--mono);
+    font-size:13px;
+    letter-spacing:.03em;
+    cursor:pointer;
+    border-radius:7px;
+    border:1px solid transparent;
+    padding:11px 18px;
+    transition:transform .08s, filter .15s;
+  }
+  button:active{transform:translateY(1px);}
+
+  .btn-primary{
+    background:var(--accent);
+    color:#06150d;
+    font-weight:600;
+    border:none;
+  }
+  .btn-primary:hover{filter:brightness(1.08);}
+
+  .btn-ghost{
+    background:transparent;
+    border:1px solid var(--panel-line);
+    color:var(--muted);
+  }
+  .btn-ghost:hover{color:var(--text); border-color:var(--accent-dim);}
+
+  .btn-danger{
+    background:transparent;
+    border:1px solid rgba(224,112,79,0.4);
+    color:var(--red);
+  }
+  .btn-danger:hover{background:rgba(224,112,79,0.1);}
+
+  .btn-open{
+    background:transparent;
+    border:1px solid var(--accent-dim);
+    color:var(--accent);
+    padding:8px 14px;
+    font-size:12.5px;
+  }
+  .btn-open:hover{background:rgba(61,220,132,0.1);}
+
+  .btn-small{
+    padding:6px 11px;
+    font-size:11.5px;
+  }
+
+  .meta{
+    font-family:var(--mono);
+    font-size:12.5px;
+    color:var(--muted);
+    margin-bottom:18px;
+    display:flex;
+    gap:18px;
+    flex-wrap:wrap;
+  }
+  .meta b{color:var(--text);}
+
+  .notice{
+    font-family:var(--mono);
+    font-size:12px;
+    color:var(--amber);
+    background:rgba(224,182,79,0.08);
+    border:1px solid rgba(224,182,79,0.25);
+    border-radius:7px;
+    padding:10px 12px;
+    margin-bottom:20px;
+    line-height:1.6;
+  }
+
+  .groups{display:flex; flex-direction:column; gap:14px;}
+  .group-card{
+    background:var(--panel);
+    border:1px solid var(--panel-line);
+    border-radius:9px;
+    padding:16px 18px;
+  }
+  .group-head{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:12px;
+    margin-bottom:10px;
+    flex-wrap:wrap;
+  }
+  .group-title{
+    font-family:var(--mono);
+    font-size:13px;
+    color:var(--text);
+  }
+  .group-title .num{color:var(--accent); margin-right:8px;}
+  .group-count{color:var(--muted); font-weight:400;}
+
+  .group-actions{display:flex; gap:8px;}
+
+  .symbol-list{
+    display:flex;
+    flex-wrap:wrap;
+    gap:6px;
+  }
+  .chip{
+    font-family:var(--mono);
+    font-size:11.5px;
+    background:#0a120e;
+    border:1px solid var(--panel-line);
+    color:var(--muted);
+    padding:4px 9px;
+    border-radius:5px;
+  }
+  .chip a{color:inherit; text-decoration:none;}
+  .chip a:hover{color:var(--accent);}
+
+  /* Watchlist tab */
+  .watchlist-toolbar{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    margin-bottom:16px;
+  }
+  .watchlist-table{
+    display:flex;
+    flex-direction:column;
+    gap:8px;
+  }
+  .wl-row{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    background:var(--panel);
+    border:1px solid var(--panel-line);
+    border-radius:8px;
+    padding:12px 16px;
+    gap:12px;
+    flex-wrap:wrap;
+  }
+  .wl-symbol{
+    font-family:var(--mono);
+    font-size:14px;
+    color:var(--text);
+    font-weight:600;
+  }
+  .wl-actions{display:flex; gap:8px;}
+  .empty-state{
+    font-family:var(--mono);
+    font-size:13px;
+    color:var(--muted);
+    text-align:center;
+    padding:50px 20px;
+    border:1px dashed var(--panel-line);
+    border-radius:9px;
+  }
+
+  /* Modal */
+  .modal-overlay{
+    position:fixed;
+    inset:0;
+    background:rgba(3,6,4,0.72);
+    backdrop-filter:blur(2px);
+    display:none;
+    align-items:center;
+    justify-content:center;
+    z-index:100;
+    padding:20px;
+  }
+  .modal-overlay.show{display:flex;}
+  .modal-box{
+    background:var(--panel);
+    border:1px solid var(--panel-line);
+    border-radius:12px;
+    width:100%;
+    max-width:440px;
+    max-height:80vh;
+    display:flex;
+    flex-direction:column;
+    overflow:hidden;
+  }
+  .modal-head{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    padding:16px 20px;
+    border-bottom:1px solid var(--panel-line);
+  }
+  .modal-head h3{
+    margin:0;
+    font-family:var(--mono);
+    font-size:14px;
+    color:var(--text);
+  }
+  .modal-close{
+    background:transparent;
+    border:none;
+    color:var(--muted);
+    font-size:18px;
+    cursor:pointer;
+    padding:2px 8px;
+  }
+  .modal-close:hover{color:var(--text);}
+  .modal-body{
+    padding:10px 12px;
+    overflow-y:auto;
+  }
+  .modal-row{
+    display:flex;
+    align-items:center;
+    gap:12px;
+    padding:10px 10px;
+    border-radius:7px;
+  }
+  .modal-row:hover{background:#0a120e;}
+  .modal-row input[type=checkbox]{
+    width:17px; height:17px;
+    accent-color:var(--accent);
+    cursor:pointer;
+  }
+  .modal-row label{
+    margin:0;
+    font-family:var(--mono);
+    font-size:13.5px;
+    text-transform:none;
+    letter-spacing:0;
+    color:var(--text);
+    cursor:pointer;
+    flex:1;
+  }
+  .modal-foot{
+    padding:12px 20px;
+    border-top:1px solid var(--panel-line);
+    font-family:var(--mono);
+    font-size:11.5px;
+    color:var(--muted);
+  }
+
+  .toast{
+    position:fixed;
+    bottom:24px;
+    left:50%;
+    transform:translateX(-50%) translateY(20px);
+    background:#0e1a13;
+    border:1px solid var(--accent-dim);
+    color:var(--text);
+    font-family:var(--mono);
+    font-size:13px;
+    padding:10px 18px;
+    border-radius:8px;
+    opacity:0;
+    pointer-events:none;
+    transition:opacity .2s, transform .2s;
+    z-index:200;
+  }
+  .toast.show{opacity:1; transform:translateX(-50%) translateY(0);}
+
+  footer{
+    margin-top:40px;
+    font-family:var(--mono);
+    font-size:11.5px;
+    color:#4a5b50;
+    text-align:center;
+  }
+
+  ::selection{background:rgba(61,220,132,0.25);}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div class="eyebrow">NSE · TradingView</div>
+    <h1>Chart Batch</h1>
+    <p class="sub">Paste your symbols, split them into groups, open each group as tabs — and star any stock into a persistent watchlist.</p>
+  </header>
+
+  <div class="tabs">
+    <button class="tab-btn active" data-tab="builder">Builder</button>
+    <button class="tab-btn" data-tab="watchlist">Watchlist <span class="badge" id="wlBadge">0</span></button>
+  </div>
+
+  <!-- BUILDER VIEW -->
+  <div class="view active" id="view-builder">
+    <div class="panel">
+      <label for="symbols">Symbols (comma separated)</label>
+      <textarea id="symbols" placeholder="RELIANCE, TCS, INFY, HDFCBANK, ICICIBANK, SBIN, ITC, LT, AXISBANK, KOTAKBANK, ..."></textarea>
+      <div class="controls">
+        <div class="group-size">
+          Group size
+          <input type="number" id="groupSize" value="10" min="1" max="50">
+        </div>
+        <div style="display:flex; gap:10px; flex-wrap:wrap;">
+          <button class="btn-ghost" id="pasteBtn">📋 Paste from Chartink</button>
+          <button class="btn-ghost" id="clearBtn">Clear</button>
+          <button class="btn-primary" id="buildBtn">Build groups</button>
+        </div>
+      </div>
+      <div class="chartink-hint">
+        On your Chartink screener, click <b>Copy → Symbols</b> to copy the list, then click <b>Paste from Chartink</b> above — it fills the box and builds the groups automatically.
+      </div>
+    </div>
+
+    <div id="output"></div>
+  </div>
+
+  <!-- WATCHLIST VIEW -->
+  <div class="view" id="view-watchlist">
+    <div class="watchlist-toolbar">
+      <div class="meta" style="margin:0;"><span id="wlCount"><b>0</b> stocks saved</span></div>
+      <div style="display:flex; gap:10px;">
+        <button class="btn-open btn-small" id="openAllBtn">Open all ↗</button>
+        <button class="btn-danger btn-small" id="clearAllBtn">Clear all</button>
+      </div>
+    </div>
+    <div id="watchlistTable" class="watchlist-table"></div>
+  </div>
+
+  <footer>Links follow the pattern chart/RTfYVUBz/?symbol=NSE%3A&lt;SYMBOL&gt; — allow pop-ups for this page so each group can open in full. Watchlist is saved in this browser only.</footer>
+</div>
+
+<!-- MODAL -->
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal-box">
+    <div class="modal-head">
+      <h3 id="modalTitle">Group</h3>
+      <button class="modal-close" id="modalClose">✕</button>
+    </div>
+    <div class="modal-body" id="modalBody"></div>
+    <div class="modal-foot">Tick a stock to add it to your Watchlist tab. Untick to remove it.</div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const BASE = "https://in.tradingview.com/chart/RTfYVUBz/?symbol=NSE%3A";
+const WL_KEY = "chartbatch_watchlist";
+
+const symbolsEl = document.getElementById('symbols');
+const groupSizeEl = document.getElementById('groupSize');
+const outputEl = document.getElementById('output');
+const buildBtn = document.getElementById('buildBtn');
+const clearBtn = document.getElementById('clearBtn');
+const pasteBtn = document.getElementById('pasteBtn');
+const toastEl = document.getElementById('toast');
+
+const modalOverlay = document.getElementById('modalOverlay');
+const modalTitle = document.getElementById('modalTitle');
+const modalBody = document.getElementById('modalBody');
+const modalClose = document.getElementById('modalClose');
+
+const wlBadge = document.getElementById('wlBadge');
+const wlCount = document.getElementById('wlCount');
+const watchlistTable = document.getElementById('watchlistTable');
+const clearAllBtn = document.getElementById('clearAllBtn');
+const openAllBtn = document.getElementById('openAllBtn');
+
+/* ---------- helpers ---------- */
+function showToast(msg){
+  toastEl.textContent = msg;
+  toastEl.classList.add('show');
+  clearTimeout(showToast._t);
+  showToast._t = setTimeout(() => toastEl.classList.remove('show'), 2600);
+}
+
+function parseSymbols(raw){
+  return raw
+    .split(',')
+    .map(s => s.trim())
+    .filter(s => s.length > 0)
+    .map(s => s.toUpperCase());
+}
+
+function chunk(arr, size){
+  const out = [];
+  for(let i=0; i<arr.length; i+=size){
+    out.push(arr.slice(i, i+size));
+  }
+  return out;
+}
+
+function buildUrl(symbol){
+  return BASE + encodeURIComponent(symbol);
+}
+
+/* ---------- watchlist storage ---------- */
+function loadWatchlist(){
+  try{
+    const raw = localStorage.getItem(WL_KEY);
+    return raw ? JSON.parse(raw) : [];
+  }catch(e){
+    return [];
+  }
+}
+
+function saveWatchlist(list){
+  localStorage.setItem(WL_KEY, JSON.stringify(list));
+  renderWatchlist();
+}
+
+function isInWatchlist(symbol){
+  return loadWatchlist().includes(symbol);
+}
+
+function addToWatchlist(symbol){
+  const list = loadWatchlist();
+  if(!list.includes(symbol)){
+    list.push(symbol);
+    saveWatchlist(list);
+  }
+}
+
+function removeFromWatchlist(symbol){
+  const list = loadWatchlist().filter(s => s !== symbol);
+  saveWatchlist(list);
+}
+
+function clearWatchlist(){
+  saveWatchlist([]);
+}
+
+function renderWatchlist(){
+  const list = loadWatchlist();
+  wlBadge.textContent = list.length;
+  wlCount.innerHTML = `<b>${list.length}</b> stocks saved`;
+
+  if(list.length === 0){
+    watchlistTable.innerHTML = '<div class="empty-state">No stocks yet. Open a group in the Builder tab, click "Watchlist", and tick the ones you want to track.</div>';
+    return;
+  }
+
+  watchlistTable.innerHTML = '';
+  list.forEach(symbol => {
+    const row = document.createElement('div');
+    row.className = 'wl-row';
+
+    const left = document.createElement('div');
+    left.className = 'wl-symbol';
+    left.textContent = symbol;
+
+    const actions = document.createElement('div');
+    actions.className = 'wl-actions';
+
+    const openBtn = document.createElement('button');
+    openBtn.className = 'btn-open btn-small';
+    openBtn.textContent = 'Open in TradingView ↗';
+    openBtn.addEventListener('click', () => window.open(buildUrl(symbol), '_blank', 'noopener'));
+
+    const removeBtn = document.createElement('button');
+    removeBtn.className = 'btn-danger btn-small';
+    removeBtn.textContent = 'Remove';
+    removeBtn.addEventListener('click', () => {
+      removeFromWatchlist(symbol);
+      showToast(`${symbol} removed from watchlist`);
+    });
+
+    actions.appendChild(openBtn);
+    actions.appendChild(removeBtn);
+    row.appendChild(left);
+    row.appendChild(actions);
+    watchlistTable.appendChild(row);
+  });
+}
+
+/* ---------- tabs ---------- */
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('view-' + btn.dataset.tab).classList.add('active');
+  });
+});
+
+/* ---------- modal ---------- */
+function openWatchlistModal(groupSymbols, groupLabel){
+  modalTitle.textContent = `${groupLabel} — tick to watch`;
+  modalBody.innerHTML = '';
+
+  groupSymbols.forEach((symbol, i) => {
+    const row = document.createElement('div');
+    row.className = 'modal-row';
+
+    const checkbox = document.createElement('input');
+    checkbox.type = 'checkbox';
+    checkbox.id = 'wl-check-' + i + '-' + symbol;
+    checkbox.checked = isInWatchlist(symbol);
+
+    checkbox.addEventListener('change', () => {
+      if(checkbox.checked){
+        addToWatchlist(symbol);
+        showToast(`${symbol} added to watchlist`);
+      }else{
+        removeFromWatchlist(symbol);
+        showToast(`${symbol} removed from watchlist`);
+      }
+    });
+
+    const label = document.createElement('label');
+    label.htmlFor = checkbox.id;
+    label.textContent = symbol;
+
+    row.appendChild(checkbox);
+    row.appendChild(label);
+    modalBody.appendChild(row);
+  });
+
+  modalOverlay.classList.add('show');
+}
+
+modalClose.addEventListener('click', () => modalOverlay.classList.remove('show'));
+modalOverlay.addEventListener('click', (e) => {
+  if(e.target === modalOverlay) modalOverlay.classList.remove('show');
+});
+
+openAllBtn.addEventListener('click', () => {
+  const list = loadWatchlist();
+  if(list.length === 0){
+    showToast('Watchlist is empty');
+    return;
+  }
+  openGroup(list);
+});
+
+clearAllBtn.addEventListener('click', () => {
+  if(loadWatchlist().length === 0) return;
+  if(confirm('Clear the entire watchlist? This cannot be undone.')){
+    clearWatchlist();
+    showToast('Watchlist cleared');
+  }
+});
+
+/* ---------- builder render ---------- */
+function render(groups, totalCount){
+  outputEl.innerHTML = '';
+
+  if(groups.length === 0){
+    return;
+  }
+
+  const meta = document.createElement('div');
+  meta.className = 'meta';
+  meta.innerHTML = `<span><b>${totalCount}</b> symbols</span><span><b>${groups.length}</b> groups</span>`;
+  outputEl.appendChild(meta);
+
+  const notice = document.createElement('div');
+  notice.className = 'notice';
+  notice.textContent = 'Browsers block multiple auto-opened tabs by default. If a group doesn\'t fully open, click the pop-up blocked icon in the address bar and choose "Always allow", then click Open again.';
+  outputEl.appendChild(notice);
+
+  const groupsWrap = document.createElement('div');
+  groupsWrap.className = 'groups';
+
+  groups.forEach((group, idx) => {
+    const groupLabel = `Group ${idx+1}`;
+    const card = document.createElement('div');
+    card.className = 'group-card';
+
+    const head = document.createElement('div');
+    head.className = 'group-head';
+    head.innerHTML = `
+      <div class="group-title"><span class="num">${groupLabel.toUpperCase()}</span><span class="group-count">${group.length} symbols</span></div>
+    `;
+
+    const actions = document.createElement('div');
+    actions.className = 'group-actions';
+
+    const wlBtn = document.createElement('button');
+    wlBtn.className = 'btn-ghost btn-small';
+    wlBtn.textContent = '☆ Watchlist';
+    wlBtn.addEventListener('click', () => openWatchlistModal(group, groupLabel));
+
+    const openBtn = document.createElement('button');
+    openBtn.className = 'btn-open';
+    openBtn.textContent = `Open ${group.length} links ↗`;
+    openBtn.addEventListener('click', () => openGroup(group));
+
+    actions.appendChild(wlBtn);
+    actions.appendChild(openBtn);
+    head.appendChild(actions);
+    card.appendChild(head);
+
+    const list = document.createElement('div');
+    list.className = 'symbol-list';
+    group.forEach(sym => {
+      const chip = document.createElement('div');
+      chip.className = 'chip';
+      const a = document.createElement('a');
+      a.href = buildUrl(sym);
+      a.target = '_blank';
+      a.rel = 'noopener';
+      a.textContent = sym;
+      chip.appendChild(a);
+      list.appendChild(chip);
+    });
+    card.appendChild(list);
+
+    groupsWrap.appendChild(card);
+  });
+
+  outputEl.appendChild(groupsWrap);
+}
+
+function openGroup(group){
+  group.forEach((sym, i) => {
+    setTimeout(() => {
+      window.open(buildUrl(sym), '_blank', 'noopener');
+    }, i * 120);
+  });
+}
+
+/* ---------- events ---------- */
+buildBtn.addEventListener('click', () => {
+  const symbols = parseSymbols(symbolsEl.value);
+  const size = Math.max(1, parseInt(groupSizeEl.value, 10) || 10);
+  const groups = chunk(symbols, size);
+  render(groups, symbols.length);
+});
+
+clearBtn.addEventListener('click', () => {
+  symbolsEl.value = '';
+  outputEl.innerHTML = '';
+});
+
+pasteBtn.addEventListener('click', async () => {
+  try{
+    const text = await navigator.clipboard.readText();
+    if(!text || !text.trim()){
+      showToast('Clipboard is empty — copy symbols from Chartink first');
+      return;
+    }
+    symbolsEl.value = text.trim();
+    showToast('Pasted from clipboard ✓');
+    buildBtn.click();
+  }catch(err){
+    showToast('Clipboard access blocked — press Ctrl+V in the box instead');
+  }
+});
+
+/* ---------- init ---------- */
+renderWatchlist();
+</script>
+</body>
+</html>
